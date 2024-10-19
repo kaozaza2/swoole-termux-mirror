@@ -314,7 +314,7 @@ function stream_file($response, $path, $range, $compress) {
         $response->header("Content-Encoding", "gzip");
     }
 
-    if ($bytesToSend > APT_SPEED_LIMIT) {
+    if ($fileSize > APT_SPEED_LIMIT) {
         $response->header("Transfer-Encoding", "chunked");
     }
 
@@ -350,7 +350,7 @@ function stream_file($response, $path, $range, $compress) {
             $chunkSize = strlen($originalChunk);  // Use the original chunk size
             record_bytes($chunkSize); // Record total bytes send to clients.
             $sleepTime = (1000000 * $chunkSize) / APT_SPEED_LIMIT + 1000; // microseconds to sleep + 1ms buffer
-            usleep($sleepTime);  // Sleep to limit the speed
+            usleep((int)$sleepTime);  // Sleep to limit the speed
         }
 
         $response->end();
