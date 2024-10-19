@@ -318,9 +318,9 @@ function stream_file($response, $path, $range, $compress) {
         $response->header("Transfer-Encoding", "chunked");
     }
 
-    $file = fopen($path, 'rb');
+    $file = @fopen($path, 'rb');
 
-    if ($file) {
+    if ($file !== false) {
         // Determine the bytes to send
         $bytesToSend = isset($end) ? $end - $start + 1 : $fileSize;
 
@@ -349,7 +349,7 @@ function stream_file($response, $path, $range, $compress) {
             // Sleep to respect speed limit
             $chunkSize = strlen($originalChunk);  // Use the original chunk size
             record_bytes($chunkSize); // Record total bytes send to clients.
-            $sleepTime = (1000000 * $chunkSize) / APT_SPEED_LIMIT; // microseconds to sleep
+            $sleepTime = (1000000 * $chunkSize) / APT_SPEED_LIMIT + 1000; // microseconds to sleep + 1ms buffer
             usleep($sleepTime);  // Sleep to limit the speed
         }
 
