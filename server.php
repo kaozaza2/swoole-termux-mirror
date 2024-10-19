@@ -304,7 +304,7 @@ function stream_file($response, $path, $range, $compress) {
         $response->header('Content-Type', $mimeType);
         $response->header('Content-Disposition', 'attachment; filename="'.basename($path).'"');
     } else {
-         // No range requested; send the whole file
+        // No range requested; send the whole file
         $response->header('Content-Type', $mimeType);
         $response->header('Content-Disposition', 'attachment; filename="'.basename($path).'"');
         $response->header('Accept-Ranges', 'bytes');
@@ -322,7 +322,7 @@ function stream_file($response, $path, $range, $compress) {
 
     if ($file) {
         // Determine the bytes to send
-        $bytesToSend = $end ? $end - $start + 1 : $fileSize;
+        $bytesToSend = isset($end) ? $end - $start + 1 : $fileSize;
 
         // Set the file pointer if range is requested
         if ($range !== false) {
