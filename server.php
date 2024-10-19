@@ -180,7 +180,7 @@ function is_valid_user_agent($ua, $response) {
 }
 
 function is_valid_path($path, $response) {
-    if ($path === false || (strpos($path, APT_PATH) !== 0 && strpos($path, '/..') === false) || !file_exists($path)) {
+    if ($path === false || (strpos($path, APT_PATH) !== 0 || strpos($path, '/..') !== false) || !file_exists($path)) {
         $response->status(404);
         $response->end("File not found.");
         return false;
@@ -286,7 +286,7 @@ function stream_file($response, $path, $range, $compress) {
 
     // Check for Range header
     if ($range !== false) {
-        [$start, $end] = explode('-', $range);
+        [$start, $end] = explode('-', substr($range, 6));
 
         $start = (int)$start;
         $end = (int)($end ?: $fileSize - 1);
