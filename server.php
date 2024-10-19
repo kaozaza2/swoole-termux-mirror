@@ -4,6 +4,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 date_default_timezone_set('Asia/Bangkok');
 
 use Swoole\Http\Server;
+use Swoole\Timer;
 
 // Configuration for the file server
 define( 'APT_HOST', '0.0.0.0' );
@@ -27,15 +28,15 @@ $record = json_decode(file_get_contents(APT_RECORD_FILE), true) ?? [];
 // Create Swoole server
 $server = new Server(APT_HOST, APT_PORT);
 
+Timer::tick(APT_HITS_CLEAR_SECONDS * 1000, fn() => clear_hits());
+Timer::tick(APT_RATE_LIMIT_WINDOW * 1000, fn() => clear_rate_limit());
+
 $server->on("start", function ($server) {
     echo "Server started at http://{$server->host}:{$server->port}\n";
 });
 
 $server->on("request", function ($request, $response) {
     handle_client($request, $response);
-
-    clear_hits();
-    clear_rate_limit();
 });
 
 $server->start();
@@ -179,7 +180,7 @@ function is_valid_user_agent($ua, $response) {
 }
 
 function is_valid_path($path, $response) {
-    if ($path === false || strpos($path, APT_PATH) !== 0 || !file_exists($path)) {
+    if ($path === false || (strpos($path, APT_PATH) !== 0 && strpos($path, '/..') === false) || !file_exists($path)) {
         $response->status(404);
         $response->end("File not found.");
         return false;
@@ -220,7 +221,7 @@ function log_request($ip, $method, $uri, $ua) {
     $date = date('Y/m/d H:i:s');
     $log = "$ip [$date] - $method $uri\n";
     echo $log;
-    file_put_contents(APT_LOG_PATH.'/request-' . date('Y-m') . '.log', $log, FILE_APPEND);
+    file_put_contents(APT_LOG_PATH.'/request-' . date('Y-m-d') . '.log', $log, FILE_APPEND);
 }
 
 function show_indexing($response, $path, $compress) {
@@ -285,7 +286,7 @@ function stream_file($response, $path, $range, $compress) {
 
     // Check for Range header
     if ($range !== false) {
-        [$start, $end] = explode('-', substr($range, 6));
+        [$start, $end] = explode('-', $range);
 
         $start = (int)$start;
         $end = (int)($end ?: $fileSize - 1);
@@ -302,28 +303,11 @@ function stream_file($response, $path, $range, $compress) {
         $response->header('Content-Range', "bytes $start-$end/$fileSize");
         $response->header('Content-Type', $mimeType);
         $response->header('Content-Disposition', 'attachment; filename="'.basename($path).'"');
-
-        if (! $compress) {
-            $response->header('Content-Length', $end - $start + 1);
-        }
-
-        // Move file pointer to the start of the requested range
-        $file = fopen($path, 'rb');
-        fseek($file, $start);
-
-        $bytesToSend = $end - $start + 1;
     } else {
-        // No range requested; send the whole file
+         // No range requested; send the whole file
         $response->header('Content-Type', $mimeType);
         $response->header('Content-Disposition', 'attachment; filename="'.basename($path).'"');
         $response->header('Accept-Ranges', 'bytes');
-
-        if (! $compress) {
-            $response->header('Content-Length', $fileSize);
-        }
-
-        $file = fopen($path, 'rb');
-        $bytesToSend = $fileSize;
     }
 
     if ($compress) {
@@ -334,26 +318,39 @@ function stream_file($response, $path, $range, $compress) {
         $response->header("Transfer-Encoding", "chunked");
     }
 
+    $file = fopen($path, 'rb');
+
     if ($file) {
+        // Determine the bytes to send
+        $bytesToSend = $end ? $end - $start + 1 : $fileSize;
+
+        // Set the file pointer if range is requested
+        if ($range !== false) {
+            fseek($file, $start);
+        }
+
         while (!feof($file) && $bytesToSend > 0) {
-            $chunk = fread($file, min(APT_SPEED_LIMIT, $bytesToSend));
-            $chunkSize = strlen($chunk);
+            // Read a chunk respecting the speed limit (1.5 MB/s)
+            $originalChunk = fread($file, min(APT_SPEED_LIMIT, $bytesToSend));
 
-            if ($compress) {
-                $chunk = gzencode($chunk);
-            }
+            // Compress if requested
+            $chunk = $compress ? gzencode($originalChunk) : $originalChunk;
 
+            // Send the chunk
             $write = $response->write($chunk);
 
             if ($write === false) {
                 break; // Stop if writing fails
             }
 
-            record_bytes(strlen($chunk));
+            // Reduce bytes remaining to send based on the original chunk size
+            $bytesToSend -= strlen($originalChunk);
 
-            $bytesToSend -= $chunkSize;
-            $microseconds = 1000000 * strlen($chunk) / APT_SPEED_LIMIT;
-            usleep((int)$microseconds);
+            // Sleep to respect speed limit
+            $chunkSize = strlen($originalChunk);  // Use the original chunk size
+            record_bytes($chunkSize); // Record total bytes send to clients.
+            $sleepTime = (1000000 * $chunkSize) / APT_SPEED_LIMIT; // microseconds to sleep
+            usleep($sleepTime);  // Sleep to limit the speed
         }
 
         $response->end();
