@@ -21,15 +21,13 @@ class RequestValidator
 
     public static function validated($request, $response)
     {
-        $basepath = Config::get('path', '/var/www/html');
-
         if (! in_array(strtoupper($request->method), ['GET', 'HEAD'])) {
             $response->status(405);
             $response->end("Method Not Allowed.");
             return false;
         }
 
-        if (str_starts_with($request->path, '//') && RateLimiter::attempt($request->uri, $request->ip, $response)) {
+        if (RateLimiter::attempt($request->uri, $request->ip, $response)) {
             return false;
         }
 

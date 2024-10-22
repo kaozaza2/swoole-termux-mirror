@@ -7,8 +7,8 @@ use Mikore\Apt\RequestValidator;
 
 class JsonRecord implements IRecord
 {
-    public $record;
-    public $path;
+    private $record;
+    private $path;
 
     public function __construct()
     {

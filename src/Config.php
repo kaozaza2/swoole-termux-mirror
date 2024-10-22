@@ -33,8 +33,8 @@ class Config
         }
 
         $lower = strtolower($value);
-        if ($lower === 'false' || $lower === 'true') {
-            return $lower === 'true';
+        if (in_array($lower, ['false', 'true', 'yes', 'no'], true)) {
+            return filter_var($lower, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         }
 
         return $value;

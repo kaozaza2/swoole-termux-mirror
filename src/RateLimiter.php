@@ -13,6 +13,10 @@ class RateLimiter
         $lockdown = Config::get('rate-limit-attempt', 5);
         $key = static::throttleKey($ip);
 
+        if (! str_starts_with($request->path, '//')) {
+            return false;
+        }
+
         if (! isset(static::$attempts[$key])) {
             static::$attempts[$key] = [0, $timestamp];
         }
@@ -24,7 +28,7 @@ class RateLimiter
         }
 
         if (static::$attempts[$key][0] > $lockdown) {
-            $remain = max(0, $window - ($timestamp - $lastTimestamp));
+            $remain = max(0, $window - ($timestamp - static::$attempts[$key][1]));
             $response->status(403);
             $response->end("Rate limiting reached, try again in $remain seconds.");
             return true;

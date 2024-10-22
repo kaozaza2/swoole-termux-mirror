@@ -39,14 +39,15 @@ $server->on("start", function ($server) {
 });
 
 $server->on("request", function ($request, $response) use ($record) {
-    CommandHandler::handle($request, $response, $record) 
-        ?: RequestHandler::handle($request, $response, $record);
+    if (! CommandHandler::handle($request, $response, $record)) {
+        RequestHandler::handle($request, $response, $record);
+    }
 });
 
 // Handle server shutdown
 register_shutdown_function(function () use ($record, $server) {
     $record->close();
-    $server->stop();
+    $server->shutdown();
 });
 
 // Start the server
