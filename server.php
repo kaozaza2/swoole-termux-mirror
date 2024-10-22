@@ -350,7 +350,7 @@ function stream_file($response, $path, $range, $compress) {
             $bytesToSend -= strlen($originalChunk);
 
             // Sleep to respect speed limit
-            $chunkSize = strlen($chunk);  // Use the original chunk size
+            $chunkSize = strlen($originalChunk);  // Use the original chunk size
             record_bytes($chunkSize); // Record total bytes send to clients.
             $sleepTime = (1000000 * $chunkSize) / APT_SPEED_LIMIT + 1000; // microseconds to sleep + 1ms buffer
             usleep((int)$sleepTime);  // Sleep to limit the speed
@@ -430,7 +430,7 @@ function db_execute($query, $data) {
         $statement = $db->prepare($query);
         $statement->execute($data);
     } catch (PDOException $e) {
-        echo "Database error: " . $e->getMessage();
+        echo "Database error: " . $e->getMessage() . "\n";
     }
 }
 
