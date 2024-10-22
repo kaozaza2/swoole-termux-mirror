@@ -2,9 +2,10 @@
     "name": "kaozaza2/swoole-termux-mirror",
     "description": "A Termux pkg mirror server written via swoole php",
     "type": "project",
-    "require": {
-        "react/http": "^1.10",
-        "league/flysystem": "^3.0"
+    "autoload": {
+        "psr-4": {
+            "Mikore\\Apt\\": "src/"
+        }
     },
     "license": "MIT",
     "minimum-stability": "stable"

@@ -1,1 +1,4 @@
 /vendor/
+/data/database.db
+/data/record.json
+config.ini
