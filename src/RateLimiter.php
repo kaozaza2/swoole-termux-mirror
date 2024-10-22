@@ -6,14 +6,14 @@ class RateLimiter
 {
     private static $attempts = [];
 
-    public static function attempt($uri, $ip, $response)
+    public static function attempt($path, $ip, $response)
     {
         $timestamp = microtime(true);
         $window = Config::get('rate-limit-window', 60);
         $lockdown = Config::get('rate-limit-attempt', 5);
         $key = static::throttleKey($ip);
 
-        if (! str_starts_with($request->path, '//')) {
+        if (! str_starts_with($path, '//')) {
             return false;
         }
 
