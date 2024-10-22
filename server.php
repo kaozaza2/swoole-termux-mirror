@@ -5,6 +5,7 @@ date_default_timezone_set('Asia/Bangkok');
 
 use Swoole\Http\Server;
 use Swoole\Timer;
+use PDOException;
 
 // Configuration for the file server
 define( 'APT_HOST', '0.0.0.0' );
@@ -363,7 +364,7 @@ function stream_file($response, $path, $range, $compress) {
 }
 
 function record($ip, $method, $uri, $ua) {
-    global $record, $db;
+    global $record;
 
     $date = date('Y-m-d');
     $col = explode('.', $ip);
@@ -400,12 +401,14 @@ function record($ip, $method, $uri, $ua) {
 
     write_record_file();
 
-    $statement = $db->prepare('INSERT INTO requests (ip_address, user_agent, is_apt, request_method, request_uri) VALUES (:ip_address, :user_agent, :is_apt, :request_method, :request_uri);');
-    $statement->execute([':ip_address' => $ip, ':user_agent' => $ua, ':is_apt' => $requestIsApt, ':request_method' => $method, ':request_uri' => $uri]);
+    db_execute(
+        'INSERT INTO requests (ip_address, user_agent, is_apt, request_method, request_uri) VALUES (:ip_address, :user_agent, :is_apt, :request_method, :request_uri);',
+        [':ip_address' => $ip, ':user_agent' => $ua, ':is_apt' => $requestIsApt, ':request_method' => $method, ':request_uri' => $uri]
+    );
 }
 
 function record_bytes($bytesSend) {
-    global $record, $db;
+    global $record;
 
     $date = date('Y-m-d');
 
@@ -414,8 +417,21 @@ function record_bytes($bytesSend) {
 
     write_record_file();
 
-    $statement = $db->prepare('INSERT INTO data_transfer (date, total_bytes_sent) VALUES (:date, :totalBytes) ON CONFLICT(date) DO UPDATE SET total_bytes_sent = total_bytes_sent + excluded.total_bytes_sent;');
-    $statement->execute([':date' => $date, ':totalBytes' => $bytesSend]);
+    db_execute(
+        'INSERT INTO data_transfer (date, total_bytes_sent) VALUES (:date, :totalBytes) ON CONFLICT(date) DO UPDATE SET total_bytes_sent = total_bytes_sent + excluded.total_bytes_sent;',
+        [':date' => $date, ':totalBytes' => $bytesSend]
+    );
+}
+
+function db_execute($query, $data) {
+    global $db;
+
+    try {
+        $statement = $db->prepare($query);
+        $statement->execute($data);
+    } catch (PDOException $e) {
+        echo "Database error: " . $e->getMessage();
+    }
 }
 
 function create_db_connection() {
@@ -452,7 +468,7 @@ CREATE TABLE IF NOT EXISTS requests (
 );');
 
     $db->exec('
-CREATE TABLE data_transfer (
+CREATE TABLE IF NOT EXISTS data_transfer (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date DATE NOT NULL UNIQUE,
     total_bytes_sent INTEGER NOT NULL
