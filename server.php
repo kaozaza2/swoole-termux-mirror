@@ -467,6 +467,9 @@ CREATE TABLE IF NOT EXISTS requests (
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );');
 
+    $db->exec('CREATE INDEX idx_requests_ip ON requests (ip_address);');
+    $db->exec('CREATE INDEX idx_requests_uri ON requests (request_uri);');
+
     $db->exec('
 CREATE TABLE IF NOT EXISTS data_transfer (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
