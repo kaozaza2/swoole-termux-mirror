@@ -1,0 +1,12 @@
+{
+    "name": "kaozaza2/swoole-termux-mirror",
+    "description": "A Termux pkg mirror server written via swoole php",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Mikore\\Apt\\": "src/"
+        }
+    },
+    "license": "MIT",
+    "minimum-stability": "stable"
+}
