@@ -476,6 +476,8 @@ CREATE TABLE IF NOT EXISTS data_transfer (
     date DATE NOT NULL UNIQUE,
     total_bytes_sent INTEGER NOT NULL
 );');
+
+    $db->exec('CREATE INDEX idx_data_transfer_date ON data_transfer (date);');
 }
 
 function write_record_file() {
