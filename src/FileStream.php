@@ -43,13 +43,13 @@ class FileStream
             $response->header("Transfer-Encoding", "chunked");
         }
 
-        $response->header('Content-Length', $bytesToSend);
-
         $file = fopen($request->path, 'rb');
 
         if ($file !== false) {
             // Determine the bytes to send
             $bytesToSend = isset($end) ? $end - $start + 1 : $fileSize;
+
+            $response->header('Content-Length', $bytesToSend);
 
             // Set the file pointer if range is requested
             if ($request->range !== false) {
