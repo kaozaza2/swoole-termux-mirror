@@ -2,13 +2,22 @@
 
 namespace Mikore\Apt;
 
+use RuntimeException;
+
 class Config
 {
-    public static $config = [];
+    private static $config = [];
 
-    public static function initialize()
+    public static function initialize($configPath = null)
     {
-        static::$config = parse_ini_file(realpath(__DIR__.'/../config.ini'));
+        $configPath = $configPath ?? realpath(__DIR__.'/../config.ini');
+        $config = parse_ini_file($configPath);
+
+        if ($config === false) {
+            throw new RuntimeException("Failed to parse config file: $configPath");
+        }
+
+        static::$config = $config;
     }
 
     public static function get($key, $default = null)

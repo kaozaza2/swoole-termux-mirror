@@ -45,6 +45,10 @@ class JsonRecord implements IRecord
         $this->record['uri_hits'][$request->uri]++;
 
         if (! RequestValidator::isAptRequest($request->ua)) {
+            if (! isset($this->record['unknown_ua_request'][$request->ip])) {
+                $this->record['unknown_ua_request'][$request->ip] = [];
+            }
+
             array_push(
                 $this->record['unknown_ua_request'][$request->ip],
                 ['uri' => $request->method.' '.$request->uri, 'ua' => $request->ua]
@@ -71,7 +75,7 @@ class JsonRecord implements IRecord
     public function clean()
     {
         $basepath = Config::get('path', '/var/www/html');
-        $hits = array_reverse($this->record['uri_hits']);
+        $hits =  $this->record['uri_hits'];
 
         foreach ($hits as $uri => $hit) {
             if (! file_exists($basepath.$uri) || ! is_file($basepath.$uri)) {
@@ -94,9 +98,9 @@ class JsonRecord implements IRecord
         if ($timestamp - $lch > $clearSeconds || $force) {
             $this->record['last_clear_hits'] = $timestamp;
 
-            $reverse = array_reverse($this->record['uri_hits']);
+            $hits = $this->record['uri_hits'];
 
-            foreach ($reverse as $uri => $hit) {
+            foreach ($hits as $uri => $hit) {
                 if ($hit <= $clearMin) {
                     unset($this->record['uri_hits'][$uri]);
                 }

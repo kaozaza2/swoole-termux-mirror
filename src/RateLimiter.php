@@ -4,7 +4,7 @@ namespace Mikore\Apt;
 
 class RateLimiter
 {
-    private static $attepmts = [];
+    private static $attempts = [];
 
     public static function attempt($uri, $ip, $response)
     {
@@ -13,19 +13,17 @@ class RateLimiter
         $lockdown = Config::get('rate-limit-attempt', 5);
         $key = static::throttleKey($ip);
 
-        if (! isset(static::$attepmts[$key])) {
-            static::$attepmts[$key] = [0, $timestamp];
+        if (! isset(static::$attempts[$key])) {
+            static::$attempts[$key] = [0, $timestamp];
         }
 
-        [$attempt, $lastTimestamp] = static::$attepmts[$key];
-
-        if ($timestamp - $lastTimestamp > $window) {
-            static::$attepmts[$key] = [1, $timestamp];
+        if ($timestamp - static::$attempts[$key][1] > $window) {
+            static::$attempts[$key] = [1, $timestamp];
         } else {
-            static::$attepmts[$key][0]++;
+            static::$attempts[$key][0]++;
         }
 
-        if ($attempt > $lockdown) {
+        if (static::$attempts[$key][0] > $lockdown) {
             $remain = max(0, $window - ($timestamp - $lastTimestamp));
             $response->status(403);
             $response->end("Rate limiting reached, try again in $remain seconds.");
@@ -37,21 +35,21 @@ class RateLimiter
 
     public static function clear()
     {
-        $attepmts = array_reverse(static::$attepmts);
+        $attempts = static::$attempts;
         $window = Config::get('rate-limit-window', 60);
         $current = microtime(true);
 
-        foreach ($attepmts as $key => $value) {
+        foreach ($attempts as $key => $value) {
             [$attempt, $timestamp] = $value;
 
-            if ($current - $timestamp < $window) {
-                unset(static::$attepmts[$key]);
+            if ($current - $timestamp > $window) {
+                unset(static::$attempts[$key]);
             }
         }
     }
 
     private static function throttleKey($ip)
     {
-        return hash('md5', $ip);
+        return hash('sha256', $ip);
     }
 }

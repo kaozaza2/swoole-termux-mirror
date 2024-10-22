@@ -4,25 +4,25 @@ namespace Mikore\Apt;
 
 class CommandHandler
 {
-    public static function handle($request, $response, $record = null)
+    public static function handle($request, $response, $record)
     {
         $req = new AptRequest($request);
         $command = basename($req->uri);
 
         if ($req->method === 'DELETE') {
             if ($command === "clear_hits") {
-                $record?->clear(true);
-                return $this->ok($response);
+                $record->clear(true);
+                return static::ok($response);
             }
 
             if ($command === "clear_rate_limit") {
                 RateLimiter::clear();
-                return $this->ok($response);
+                return static::ok($response);
             }
 
             if ($command === "cleanup") {
-                $record?->clean();
-                return $this->ok($response);
+                $record->clean();
+                return static::ok($response);
             }
         }
 

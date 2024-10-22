@@ -59,12 +59,12 @@ class DirectoryIndexer
 
         $response->end($html);
 
-        $recored->recordBytes(strlen($html));
+        $record->recordBytes(strlen($html));
     }
 
     private static function human_filesize($bytes, $dec = 2) {
         $sizes = ['B', 'kB', 'MB', 'GB', 'TB'];
-        $factor = floor((strlen($bytes) - 1) / 3);
+        $factor = ($bytes > 0) ? floor(log($bytes, 1024)) : 0;
         return sprintf("%.{$dec}f %s", $bytes / (1024 ** $factor), $sizes[$factor]);
     }
 }

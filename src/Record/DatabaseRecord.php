@@ -10,7 +10,7 @@ use PDOException;
 
 class DatabaseRecord implements IRecord
 {
-    public $db;
+    private $db;
 
     public function __construct()
     {

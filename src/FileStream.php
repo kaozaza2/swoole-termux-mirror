@@ -43,7 +43,9 @@ class FileStream
             $response->header("Transfer-Encoding", "chunked");
         }
 
-        $file = @fopen($request->path, 'rb');
+        $response->header('Content-Length', $bytesToSend);
+
+        $file = fopen($request->path, 'rb');
 
         if ($file !== false) {
             // Determine the bytes to send
