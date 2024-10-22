@@ -5,6 +5,7 @@ date_default_timezone_set('Asia/Bangkok');
 
 use Swoole\Http\Server;
 use Swoole\Timer;
+use PDOException;
 
 // Configuration for the file server
 define( 'APT_HOST', '0.0.0.0' );
@@ -12,6 +13,7 @@ define( 'APT_PORT', 46161 );
 define( 'APT_PATH', '/var/www/html' );
 define( 'APT_LOG_PATH', __DIR__ . '/logs' );
 define( 'APT_RECORD_FILE', __DIR__ . '/data/record.json' );
+define( 'APT_DATABASE_PATH', __DIR__ . '/data/database.db' );
 define( 'APT_SPEED_LIMIT', (int)(1.5 * 1024 * 1024) ); // 1.5 MB/s
 define( 'APT_RATE_LIMIT_WINDOW', 60 );
 define( 'APT_RATE_LIMIT_ATTEMPT', 5 );
@@ -19,6 +21,7 @@ define( 'APT_HITS_MIN', 3 );
 define( 'APT_HITS_CLEAR_SECONDS', 86400 );
 
 $ratelimit = [];
+$db = create_db_connection();
 
 if (!file_exists(APT_RECORD_FILE)) {
     touch(APT_RECORD_FILE);
@@ -383,11 +386,13 @@ function record($ip, $method, $uri, $ua) {
     $record['range_requests'][$markedIp]++;
     $record['uri_hits'][$uri]++;
 
+    $requestIsApt = true;
     if (!str_starts_with($ua, 'Termux-PKG/2.0 mirror-checker')
      && !str_starts_with($ua, 'Debian APT-HTTP/1.3')
      && !str_starts_with($ua, 'Debian APT-CURL/1.0')
      && !str_starts_with($ua, 'nala/0.15.4')) {
         $record['unknown_ua_request'][$ip][] = ['uri' => $method.' '.$uri, 'ua' => $ua];
+        $requestIsApt = false;
     }
 
     arsort($record['range_requests']);
@@ -395,6 +400,11 @@ function record($ip, $method, $uri, $ua) {
     arsort($record['uri_hits']);
 
     write_record_file();
+
+    db_execute(
+        'INSERT INTO requests (ip_address, user_agent, is_apt, request_method, request_uri) VALUES (:ip_address, :user_agent, :is_apt, :request_method, :request_uri);',
+        [':ip_address' => $ip, ':user_agent' => $ua, ':is_apt' => $requestIsApt, ':request_method' => $method, ':request_uri' => $uri]
+    );
 }
 
 function record_bytes($bytesSend) {
@@ -406,6 +416,68 @@ function record_bytes($bytesSend) {
     $record['total_bytes_send'][$date] = $value;
 
     write_record_file();
+
+    db_execute(
+        'INSERT INTO data_transfer (date, total_bytes_sent) VALUES (:date, :totalBytes) ON CONFLICT(date) DO UPDATE SET total_bytes_sent = total_bytes_sent + excluded.total_bytes_sent;',
+        [':date' => $date, ':totalBytes' => $bytesSend]
+    );
+}
+
+function db_execute($query, $data) {
+    global $db;
+
+    try {
+        $statement = $db->prepare($query);
+        $statement->execute($data);
+    } catch (PDOException $e) {
+        echo "Database error: " . $e->getMessage() . "\n";
+    }
+}
+
+function create_db_connection() {
+    $shouldRunMigration = false;
+
+    if (! file_exists(APT_DATABASE_PATH)) {
+        touch(APT_DATABASE_PATH);
+        $shouldRunMigration = true;
+    }
+
+    $db = new PDO('sqlite:'.APT_DATABASE_PATH);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    if ($shouldRunMigration) {
+        db_migration($db);
+        echo 'database initialized at'.APT_DATABASE_PATH.".\n";
+    }
+
+    echo "database ready for use.\n";
+
+    return $db;
+}
+
+function db_migration($db) {
+    $db->exec('
+CREATE TABLE IF NOT EXISTS requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip_address TEXT NOT NULL,
+    user_agent TEXT NOT NULL,
+    is_apt BOOLEAN NOT NULL,
+    request_method TEXT NOT NULL,
+    request_uri TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);');
+
+    $db->exec('CREATE INDEX idx_requests_ip ON requests (ip_address);');
+    $db->exec('CREATE INDEX idx_requests_uri ON requests (request_uri);');
+
+    $db->exec('
+CREATE TABLE IF NOT EXISTS data_transfer (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date DATE NOT NULL UNIQUE,
+    total_bytes_sent INTEGER NOT NULL
+);');
+
+    $db->exec('CREATE INDEX idx_data_transfer_date ON data_transfer (date);');
 }
 
 function write_record_file() {
