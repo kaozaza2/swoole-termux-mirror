@@ -24,6 +24,16 @@ class CommandHandler
                 $record->clean();
                 return static::ok($response);
             }
+
+            if ($command === "limit_disable") {
+                Config::set('speed-limit-disabled', true);
+                return static::ok($response);
+            }
+
+            if ($command === "limit_enable") {
+                Config::set('speed-limit-disabled', false);
+                return static::ok($response);
+            }
         }
 
         return false;

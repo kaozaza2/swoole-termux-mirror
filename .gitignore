@@ -1,4 +1,6 @@
 /vendor/
 /data/database.db
 /data/record.json
+/logs/*.log
+/logs/*.log.*
 config.ini

@@ -20,6 +20,6 @@ class RequestHandler
 
         is_dir($aptRequest->path)
             ? DirectoryIndexer::index($aptRequest, $response, $record)
-            : FileStream::stream($aptRequest, $response, $record);
+            : FileStream::stream($aptRequest, $response, $request->fd, $record);
     }
 }

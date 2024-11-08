@@ -39,4 +39,11 @@ class Config
 
         return $value;
     }
+
+    public static function set($key, $value)
+    {
+        static::$config[$key] = $value;
+
+        return $value;
+    }
 }

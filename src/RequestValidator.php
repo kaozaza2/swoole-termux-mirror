@@ -27,7 +27,7 @@ class RequestValidator
             return false;
         }
 
-        if (RateLimiter::attempt($request->path, $request->ip, $response)) {
+        if (RateLimiter::attempt($request, $response)) {
             return false;
         }
 

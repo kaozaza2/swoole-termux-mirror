@@ -6,14 +6,17 @@ class RateLimiter
 {
     private static $attempts = [];
 
-    public static function attempt($path, $ip, $response)
+    public static function attempt($request, $response)
     {
         $timestamp = microtime(true);
         $window = Config::get('rate-limit-window', 60);
         $lockdown = Config::get('rate-limit-attempt', 5);
-        $key = static::throttleKey($ip);
+        $key = static::throttleKey($request->ua);
+        $basepath = Config::get('path', '/var/www/html');
 
-        if (! str_starts_with($path, '//')) {
+        if (strpos($request->path, '//') === false
+           && strpos($request->path, '/..') === false
+           && file_exists($request->path)) {
             return false;
         }
 
@@ -52,8 +55,8 @@ class RateLimiter
         }
     }
 
-    private static function throttleKey($ip)
+    private static function throttleKey($ua)
     {
-        return hash('sha256', $ip);
+        return hash('sha256', $ua);
     }
 }

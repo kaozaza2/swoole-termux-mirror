@@ -53,8 +53,6 @@ class DirectoryIndexer
         if ($request->compress) {
             $response->header("Content-Encoding", "gzip");
             $html = gzencode($html);
-        } else {
-            $response->header("Content-Length", strlen($html));
         }
 
         $response->end($html);

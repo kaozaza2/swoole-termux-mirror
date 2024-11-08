@@ -13,7 +13,7 @@ class ConsoleLogger
             return;
         }
 
-        $message = implode("\n\n", $arguments);
+        $message = trim(implode("\n\n", $arguments));
 
         echo $prefix[$methodName] . " $message\n";
     }

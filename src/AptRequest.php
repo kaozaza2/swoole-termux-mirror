@@ -11,6 +11,8 @@ class AptRequest
     public $path;
     public $compress;
     public $range;
+    public $etag;
+    public $etagMatch;
 
     public function __construct($request)
     {
@@ -23,5 +25,7 @@ class AptRequest
         $this->path = realpath($basepath . urldecode(parse_url($this->uri, PHP_URL_PATH)));
         $this->compress = str_contains($request->header['accept-encoding'] ?? '', 'gzip');
         $this->range = $request->header['range'] ?? false;
+        $this->etag = $request->header['if-none-match'] ?? null;
+        $this->etagMatch = $request->header['if-match'] ?? null;
     }
 }
